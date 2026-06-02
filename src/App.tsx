@@ -42,22 +42,33 @@ type RecommendationItem = {
   recommendationLevel: string;
 };
 
+type AnalysisPeriod = "day" | "month" | "year";
+
 const categories = ["식비", "쇼핑", "교통", "카페", "구독", "기타"];
 const MAX_AMOUNT = 10000000;
-const CHART_COLORS = ["#2563eb", "#38bdf8", "#60a5fa", "#93c5fd", "#1e40af", "#0f172a"];
+const CHART_COLORS = [
+  "#2563eb",
+  "#38bdf8",
+  "#60a5fa",
+  "#93c5fd",
+  "#1e40af",
+  "#0f172a",
+];
 
 const cardRecommendations: Record<string, CardRecommendation> = {
   "식비+카페": {
     name: "라이프 다이닝 플러스 카드",
     type: "식비·카페 복합 혜택형",
     benefit: "음식점·배달앱·카페 결제 시 통합 할인 혜택",
-    reason: "식비와 카페 소비 비중이 함께 높아 일상 식음료 소비 절약에 적합합니다.",
+    reason:
+      "식비와 카페 소비 비중이 함께 높아 일상 식음료 소비 절약에 적합합니다.",
   },
   "쇼핑+구독": {
     name: "디지털 쇼핑 플러스 카드",
     type: "온라인 쇼핑·구독 복합 혜택형",
     benefit: "온라인 쇼핑몰·OTT·음악 스트리밍 정기결제 할인 혜택",
-    reason: "쇼핑과 구독 서비스 소비가 함께 높아 디지털 소비 중심 혜택이 적합합니다.",
+    reason:
+      "쇼핑과 구독 서비스 소비가 함께 높아 디지털 소비 중심 혜택이 적합합니다.",
   },
   "교통+카페": {
     name: "모빌리티 라이프 카드",
@@ -106,10 +117,18 @@ const cardRecommendations: Record<string, CardRecommendation> = {
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
 
-  const [income, setIncome] = useState(() => localStorage.getItem("income") || "");
-  const [budget, setBudget] = useState(() => localStorage.getItem("budget") || "");
-  const [savingGoal, setSavingGoal] = useState(() => localStorage.getItem("savingGoal") || "");
-  const [nickname, setNickname] = useState(() => localStorage.getItem("nickname") || "");
+  const [income, setIncome] = useState(
+    () => localStorage.getItem("income") || ""
+  );
+  const [budget, setBudget] = useState(
+    () => localStorage.getItem("budget") || ""
+  );
+  const [savingGoal, setSavingGoal] = useState(
+    () => localStorage.getItem("savingGoal") || ""
+  );
+  const [nickname, setNickname] = useState(
+    () => localStorage.getItem("nickname") || ""
+  );
 
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
@@ -134,26 +153,25 @@ function App() {
   const [editDate, setEditDate] = useState("");
 
   const [errorMessage, setErrorMessage] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(
+    new Date().toISOString().slice(0, 7)
+  );
+
+  const [analysisPeriod, setAnalysisPeriod] =
+    useState<AnalysisPeriod>("month");
+  const [analysisDate, setAnalysisDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [analysisMonth, setAnalysisMonth] = useState(
+    new Date().toISOString().slice(0, 7)
+  );
+  const [analysisYear, setAnalysisYear] = useState(
+    String(new Date().getFullYear())
+  );
 
   const incomeNumber = Number(income);
   const budgetNumber = Number(budget);
   const savingGoalNumber = Number(savingGoal);
-
-  const filteredExpenses = expenses.filter((item) => item.date.slice(0, 7) === selectedMonth);
-  const listExpenses = [...expenses].sort((a, b) => b.date.localeCompare(a.date));
-  const analysisExpenses = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
-
-  const totalExpense = analysisExpenses.reduce((sum, item) => sum + item.amount, 0);
-  const monthlyExpense = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
-
-  const expectedSaving = incomeNumber - monthlyExpense;
-
-  const savingRate =
-    incomeNumber > 0 ? Math.round((expectedSaving / incomeNumber) * 100) : 0;
-
-  const savingGoalAchievementRate =
-    savingGoalNumber > 0 ? Math.round((expectedSaving / savingGoalNumber) * 100) : 0;
 
   const getTodayString = () => {
     const today = new Date();
@@ -163,18 +181,74 @@ function App() {
     return `${year}-${month}-${day}`;
   };
 
+  const listExpenses = [...expenses].sort((a, b) =>
+    b.date.localeCompare(a.date)
+  );
+
+  const filteredExpenses = expenses.filter(
+    (item) => item.date.slice(0, 7) === selectedMonth
+  );
+
+  const analysisExpenses = expenses
+    .filter((item) => {
+      if (analysisPeriod === "day") {
+        return item.date === analysisDate;
+      }
+
+      if (analysisPeriod === "month") {
+        return item.date.slice(0, 7) === analysisMonth;
+      }
+
+      return item.date.slice(0, 4) === analysisYear;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const totalExpense = expenses.reduce((sum, item) => sum + item.amount, 0);
+
+  const periodExpense = analysisExpenses.reduce(
+    (sum, item) => sum + item.amount,
+    0
+  );
+
+  const expectedSaving = incomeNumber - periodExpense;
+
+  const savingRate =
+    incomeNumber > 0 ? Math.round((expectedSaving / incomeNumber) * 100) : 0;
+
+  const savingGoalAchievementRate =
+    savingGoalNumber > 0
+      ? Math.round((expectedSaving / savingGoalNumber) * 100)
+      : 0;
+
+  const isBudgetSet = budgetNumber > 0;
+  const remainingBudget = budgetNumber - periodExpense;
+
+  const budgetUsageRate = isBudgetSet
+    ? Math.round((periodExpense / budgetNumber) * 100)
+    : 0;
+
+  const isOverBudget = isBudgetSet && periodExpense > budgetNumber;
+  const isBudgetWarning =
+    isBudgetSet && budgetUsageRate >= 80 && !isOverBudget;
+
   const getRemainingDaysInMonth = () => {
     const today = new Date();
-    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    const currentMonth = `${today.getFullYear()}-${String(
+      today.getMonth() + 1
+    ).padStart(2, "0")}`;
 
-    if (selectedMonth !== currentMonth) return 0;
+    if (analysisPeriod !== "month") return 0;
+    if (analysisMonth !== currentMonth) return 0;
 
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const lastDay = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      0
+    ).getDate();
+
     return lastDay - today.getDate() + 1;
   };
 
-  const isBudgetSet = budgetNumber > 0;
-  const remainingBudget = budgetNumber - monthlyExpense;
   const remainingDays = getRemainingDaysInMonth();
 
   const dailyRecommendedSpending =
@@ -182,23 +256,13 @@ function App() {
       ? Math.floor(remainingBudget / remainingDays)
       : 0;
 
-  const isOverBudget = isBudgetSet && monthlyExpense > budgetNumber;
-
-  const budgetUsageRate = isBudgetSet
-    ? Math.round((monthlyExpense / budgetNumber) * 100)
-    : 0;
-
-  const isBudgetWarning = isBudgetSet && budgetUsageRate >= 80 && !isOverBudget;
-
-  const categoryTotals = analysisExpenses.reduce<Record<string, number>>((acc, item) => {
-    acc[item.category] = (acc[item.category] || 0) + item.amount;
-    return acc;
-  }, {});
-
-  const monthlyCategoryTotals = filteredExpenses.reduce<Record<string, number>>((acc, item) => {
-    acc[item.category] = (acc[item.category] || 0) + item.amount;
-    return acc;
-  }, {});
+  const categoryTotals = analysisExpenses.reduce<Record<string, number>>(
+    (acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + item.amount;
+      return acc;
+    },
+    {}
+  );
 
   const chartData = Object.entries(categoryTotals).map(([name, value]) => ({
     name,
@@ -207,22 +271,45 @@ function App() {
 
   const trendData = Object.entries(
     analysisExpenses.reduce<Record<string, number>>((acc, item) => {
-      acc[item.date] = (acc[item.date] || 0) + item.amount;
+      let key = item.date;
+
+      if (analysisPeriod === "year") {
+        key = item.date.slice(0, 7);
+      }
+
+      acc[key] = (acc[key] || 0) + item.amount;
       return acc;
     }, {})
   )
-    .map(([dateValue, total]) => ({ date: dateValue, total }))
+    .map(([dateValue, total]) => ({
+      date: dateValue,
+      total,
+    }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const sortedCategories = Object.entries(monthlyCategoryTotals).sort((a, b) => b[1] - a[1]);
-  const topCategory = sortedCategories[0];
+  const overallCategoryTotals = expenses.reduce<Record<string, number>>(
+    (acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + item.amount;
+      return acc;
+    },
+    {}
+  );
 
-  const overallSortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+  const overallSortedCategories = Object.entries(overallCategoryTotals).sort(
+    (a, b) => b[1] - a[1]
+  );
+
   const overallTopCategory = overallSortedCategories[0];
 
+  const sortedCategories = Object.entries(categoryTotals).sort(
+    (a, b) => b[1] - a[1]
+  );
+
+  const topCategory = sortedCategories[0];
+
   const topCategoryRate =
-    topCategory && monthlyExpense > 0
-      ? Math.round((topCategory[1] / monthlyExpense) * 100)
+    topCategory && periodExpense > 0
+      ? Math.round((topCategory[1] / periodExpense) * 100)
       : 0;
 
   const recommendedCard =
@@ -231,8 +318,8 @@ function App() {
       : null;
 
   const getCategoryRate = (categoryName: string) => {
-    const value = monthlyCategoryTotals[categoryName] || 0;
-    return monthlyExpense > 0 ? Math.round((value / monthlyExpense) * 100) : 0;
+    const value = categoryTotals[categoryName] || 0;
+    return periodExpense > 0 ? Math.round((value / periodExpense) * 100) : 0;
   };
 
   const compositeCardCandidates = [
@@ -253,11 +340,13 @@ function App() {
     },
   ];
 
-  const singleCardCandidates = sortedCategories.map(([categoryName, total]) => ({
-    key: categoryName,
-    categories: [categoryName],
-    rate: monthlyExpense > 0 ? Math.round((total / monthlyExpense) * 100) : 0,
-  }));
+  const singleCardCandidates = sortedCategories.map(
+    ([categoryName, total]) => ({
+      key: categoryName,
+      categories: [categoryName],
+      rate: periodExpense > 0 ? Math.round((total / periodExpense) * 100) : 0,
+    })
+  );
 
   const top3CardRecommendations: RecommendationItem[] = [
     ...compositeCardCandidates,
@@ -280,6 +369,12 @@ function App() {
       };
     })
     .filter((item): item is RecommendationItem => Boolean(item.card));
+
+  const getAnalysisLabel = () => {
+    if (analysisPeriod === "day") return `${analysisDate} 일간 분석`;
+    if (analysisPeriod === "month") return `${analysisMonth} 월간 분석`;
+    return `${analysisYear} 연간 분석`;
+  };
 
   useEffect(() => {
     localStorage.setItem("income", income);
@@ -317,7 +412,8 @@ function App() {
     if (inputCategory.trim() === "") return "소비 카테고리를 선택해주세요.";
     if (inputAmount.trim() === "") return "소비 금액을 입력해주세요.";
     if (Number(inputAmount) <= 0) return "음수 금액 입력 불가";
-    if (Number(inputAmount) > MAX_AMOUNT) return "입력 가능한 금액을 초과했습니다.";
+    if (Number(inputAmount) > MAX_AMOUNT)
+      return "입력 가능한 금액을 초과했습니다.";
     return "";
   };
 
@@ -325,7 +421,6 @@ function App() {
 
   const extractAmountFromText = (fullText: string) => {
     const compactText = normalizeText(fullText);
-
     const cleanAmount = (value: string) => Number(value.replace(/[^\d]/g, ""));
 
     const isValidAmount = (num: number) => {
@@ -563,9 +658,13 @@ function App() {
     };
 
     setExpenses((prev) => [newExpense, ...prev]);
-    setSelectedMonth(date.slice(0, 7));
-    setActivePage("list");
 
+    setAnalysisDate(date);
+    setAnalysisMonth(date.slice(0, 7));
+    setAnalysisYear(date.slice(0, 4));
+    setSelectedMonth(date.slice(0, 7));
+
+    setActivePage("list");
     setCategory("");
     setAmount("");
     setDate("");
@@ -614,7 +713,11 @@ function App() {
       )
     );
 
+    setAnalysisDate(editDate);
+    setAnalysisMonth(editDate.slice(0, 7));
+    setAnalysisYear(editDate.slice(0, 4));
     setSelectedMonth(editDate.slice(0, 7));
+
     setEditingId(null);
     setEditCategory("");
     setEditAmount("");
@@ -730,9 +833,13 @@ function App() {
     };
 
     setExpenses((prev) => [newExpense, ...prev]);
-    setSelectedMonth(ocrResult.date.slice(0, 7));
-    setActivePage("list");
 
+    setAnalysisDate(ocrResult.date);
+    setAnalysisMonth(ocrResult.date.slice(0, 7));
+    setAnalysisYear(ocrResult.date.slice(0, 4));
+    setSelectedMonth(ocrResult.date.slice(0, 7));
+
+    setActivePage("list");
     setCategory("");
     setAmount("");
     setDate("");
@@ -744,14 +851,22 @@ function App() {
   };
 
   const handleDownloadCSV = () => {
-    if (filteredExpenses.length === 0) {
+    const csvTargetExpenses = expenses.filter((item) => {
+      if (analysisPeriod === "day") return item.date === analysisDate;
+      if (analysisPeriod === "month") {
+        return item.date.slice(0, 7) === analysisMonth;
+      }
+      return item.date.slice(0, 4) === analysisYear;
+    });
+
+    if (csvTargetExpenses.length === 0) {
       setErrorMessage("다운로드할 소비 내역이 없습니다.");
       return;
     }
 
     const csv =
       "날짜,카테고리,금액\n" +
-      filteredExpenses
+      csvTargetExpenses
         .map((item) => `${item.date},${item.category},${item.amount}`)
         .join("\n");
 
@@ -762,15 +877,22 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
 
+    const fileLabel =
+      analysisPeriod === "day"
+        ? analysisDate
+        : analysisPeriod === "month"
+        ? analysisMonth
+        : analysisYear;
+
     link.href = url;
-    link.download = `expenses_${selectedMonth}.csv`;
+    link.download = `${fileLabel}_소비내역.csv`;
     link.click();
 
     URL.revokeObjectURL(url);
   };
 
   const handleGenerateAiCoach = async () => {
-    if (filteredExpenses.length === 0) {
+    if (analysisExpenses.length === 0) {
       setErrorMessage("소비 데이터를 입력한 뒤 AI 코칭을 실행해주세요.");
       return;
     }
@@ -789,7 +911,7 @@ function App() {
           income: incomeNumber,
           budget: budgetNumber,
           savingGoal: savingGoalNumber,
-          totalExpense: monthlyExpense,
+          totalExpense: periodExpense,
           expectedSaving,
           savingRate,
           savingGoalAchievementRate,
@@ -799,14 +921,16 @@ function App() {
           isOverBudget,
           isBudgetWarning,
           dailyRecommendedSpending,
-          expenses: filteredExpenses,
-          categoryTotals: monthlyCategoryTotals,
+          expenses: analysisExpenses,
+          categoryTotals,
           recommendedCards: top3CardRecommendations.map((item) => ({
             cardName: item.card.name,
             categories: item.categories,
             rate: item.rate,
             level: item.recommendationLevel,
           })),
+          analysisPeriod,
+          analysisLabel: getAnalysisLabel(),
         }),
       });
 
@@ -833,6 +957,77 @@ function App() {
   ) => {
     alert(`${cardName}\n\n추천 기준: ${categoryText} 소비 비중 ${rate}%`);
   };
+
+  const renderAnalysisControls = () => (
+    <section className="card" style={{ marginBottom: 20 }}>
+      <h3>분석 기준 선택</h3>
+
+      <div className="button-row">
+        <button
+          className={analysisPeriod === "day" ? "primary-btn" : "secondary-btn"}
+          onClick={() => setAnalysisPeriod("day")}
+        >
+          일별
+        </button>
+
+        <button
+          className={
+            analysisPeriod === "month" ? "primary-btn" : "secondary-btn"
+          }
+          onClick={() => setAnalysisPeriod("month")}
+        >
+          월별
+        </button>
+
+        <button
+          className={
+            analysisPeriod === "year" ? "primary-btn" : "secondary-btn"
+          }
+          onClick={() => setAnalysisPeriod("year")}
+        >
+          연도별
+        </button>
+      </div>
+
+      <div className="form-row" style={{ marginTop: 18 }}>
+        <label>분석 기간</label>
+
+        {analysisPeriod === "day" && (
+          <input
+            className="input"
+            type="date"
+            max={getTodayString()}
+            value={analysisDate}
+            onChange={(e) => setAnalysisDate(e.target.value)}
+          />
+        )}
+
+        {analysisPeriod === "month" && (
+          <input
+            className="input"
+            type="month"
+            value={analysisMonth}
+            onChange={(e) => setAnalysisMonth(e.target.value)}
+          />
+        )}
+
+        {analysisPeriod === "year" && (
+          <input
+            className="input"
+            type="number"
+            min="2000"
+            max="2100"
+            value={analysisYear}
+            onChange={(e) => setAnalysisYear(e.target.value)}
+          />
+        )}
+      </div>
+
+      <p style={{ marginTop: 10 }}>
+        현재 분석 기준: <strong>{getAnalysisLabel()}</strong>
+      </p>
+    </section>
+  );
 
   const renderSidebar = () => (
     <aside className="sidebar">
@@ -1039,22 +1234,9 @@ function App() {
     <section className="card">
       <h3>소비 내역</h3>
 
-      <div className="form-row">
-        <label>분석/CSV 기준 월</label>
-        <input
-          className="input"
-          type="month"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-        />
-      </div>
-
-      <button className="secondary-btn" onClick={handleDownloadCSV}>
-        선택 월 CSV 다운로드
-      </button>
-
-      <p style={{ marginTop: 12 }}>
-        아래 목록은 전체 저장 기록입니다. 분석과 CSV는 선택한 월 기준으로 계산됩니다.
+      <p style={{ marginTop: 0 }}>
+        아래 목록은 전체 저장 기록입니다. 분석 화면에서 일 / 월 / 년 기준으로
+        소비 흐름을 확인할 수 있습니다.
       </p>
 
       <div className="expense-list" style={{ marginTop: 18 }}>
@@ -1133,146 +1315,19 @@ function App() {
   );
 
   const renderAnalysisPage = () => (
-    <div className="grid grid-2">
-      <section className="card">
-        <h3>소비 분석</h3>
+    <>
+      {renderAnalysisControls()}
 
-        <div className="report-box">
-          <p>
-            <strong>전체 소비액:</strong> {totalExpense.toLocaleString()}원
-          </p>
-          <p>
-            <strong>선택 월 소비액:</strong> {monthlyExpense.toLocaleString()}원
-          </p>
-          <p>
-            <strong>선택 월 예산 사용률:</strong> {budgetUsageRate}%
-          </p>
-          <p>
-            <strong>예상 저축 가능 금액:</strong>{" "}
-            {expectedSaving.toLocaleString()}원
-          </p>
-          <p>
-            <strong>월별 절약률:</strong> {savingRate}%
-          </p>
+      <div className="grid grid-2">
+        <section className="card">
+          <h3>소비 분석</h3>
 
-          {savingGoalNumber > 0 && (
-            <p>
-              <strong>저축 목표 달성률:</strong> {savingGoalAchievementRate}%
-            </p>
-          )}
-
-          {savingGoalNumber > 0 && expectedSaving >= savingGoalNumber && (
-            <div className="alert success">
-              저축 목표를 달성할 수 있어요. 현재 소비 흐름을 유지해보세요.
-            </div>
-          )}
-
-          {isBudgetWarning && (
-            <div className="alert warning">
-              예산의 80%를 사용했습니다. 지출에 유의하세요.
-            </div>
-          )}
-
-          {isOverBudget && (
-            <div className="alert">
-              소비 예산을 넘어섰어요. 불필요한 소비를 줄여야 해요.
-            </div>
-          )}
-
-          {dailyRecommendedSpending > 0 && (
-            <p>
-              이번 달 남은 기간 동안 하루 권장 소비액은 약{" "}
-              {dailyRecommendedSpending.toLocaleString()}원입니다.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section className="card">
-        <h3>카테고리별 소비</h3>
-
-        {Object.keys(categoryTotals).length === 0 ? (
-          <p>분석할 소비 데이터가 없습니다.</p>
-        ) : (
-          Object.entries(categoryTotals).map(([name, total]) => (
-            <p key={name}>
-              {name}: {total.toLocaleString()}원 (
-              {Math.round((total / totalExpense) * 100)}%)
-            </p>
-          ))
-        )}
-
-        {chartData.length > 0 && (
-          <div className="chart-wrap">
-            <PieChart width={420} height={320}>
-              <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={110}
-                label={({ name, percent }) =>
-                  `${name} ${Math.round((percent || 0) * 100)}%`
-                }
-              >
-                {chartData.map((_, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={CHART_COLORS[index % CHART_COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value) => `${Number(value).toLocaleString()}원`}
-              />
-              <Legend />
-            </PieChart>
-          </div>
-        )}
-      </section>
-
-      <section className="card">
-        <h3>날짜별 소비 추이</h3>
-
-        {trendData.length === 0 ? (
-          <p>소비 추이 데이터를 표시할 수 없습니다.</p>
-        ) : (
-          <div className="chart-wrap">
-            <LineChart width={500} height={300} data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip
-                formatter={(value) => `${Number(value).toLocaleString()}원`}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="total"
-                name="일별 소비액"
-                stroke="#2563eb"
-                strokeWidth={3}
-              />
-            </LineChart>
-          </div>
-        )}
-      </section>
-
-      <section className="card">
-        <h3>월간 소비 리포트</h3>
-
-        {filteredExpenses.length === 0 ? (
-          <p>선택한 월의 소비 데이터를 입력하면 리포트가 생성됩니다.</p>
-        ) : (
           <div className="report-box">
             <p>
-              <strong>선택 월 소비액:</strong>{" "}
-              {monthlyExpense.toLocaleString()}원
+              <strong>전체 소비액:</strong> {totalExpense.toLocaleString()}원
             </p>
             <p>
-              <strong>가장 많이 쓴 카테고리:</strong>{" "}
-              {topCategory ? `${topCategory[0]} (${topCategoryRate}%)` : "없음"}
+              <strong>기간 소비액:</strong> {periodExpense.toLocaleString()}원
             </p>
             <p>
               <strong>예산 사용률:</strong> {budgetUsageRate}%
@@ -1282,18 +1337,164 @@ function App() {
               {expectedSaving.toLocaleString()}원
             </p>
             <p>
-              <strong>추천 카드:</strong>{" "}
-              {recommendedCard ? recommendedCard.name : "소비 데이터 부족"}
+              <strong>절약률:</strong> {savingRate}%
             </p>
+
+            {savingGoalNumber > 0 && (
+              <p>
+                <strong>저축 목표 달성률:</strong>{" "}
+                {savingGoalAchievementRate}%
+              </p>
+            )}
+
+            {savingGoalNumber > 0 && expectedSaving >= savingGoalNumber && (
+              <div className="alert success">
+                저축 목표를 달성할 수 있어요. 현재 소비 흐름을 유지해보세요.
+              </div>
+            )}
+
+            {isBudgetWarning && (
+              <div className="alert warning">
+                예산의 80%를 사용했습니다. 지출에 유의하세요.
+              </div>
+            )}
+
+            {isOverBudget && (
+              <div className="alert">
+                소비 예산을 넘어섰어요. 불필요한 소비를 줄여야 해요.
+              </div>
+            )}
+
+            {dailyRecommendedSpending > 0 && (
+              <p>
+                이번 달 남은 기간 동안 하루 권장 소비액은 약{" "}
+                {dailyRecommendedSpending.toLocaleString()}원입니다.
+              </p>
+            )}
           </div>
-        )}
-      </section>
-    </div>
+        </section>
+
+        <section className="card">
+          <h3>카테고리별 소비</h3>
+
+          {Object.keys(categoryTotals).length === 0 ? (
+            <p>분석할 소비 데이터가 없습니다.</p>
+          ) : (
+            Object.entries(categoryTotals).map(([name, total]) => (
+              <p key={name}>
+                {name}: {total.toLocaleString()}원 (
+                {Math.round((total / periodExpense) * 100)}%)
+              </p>
+            ))
+          )}
+
+          {chartData.length > 0 && (
+            <div className="chart-wrap">
+              <PieChart width={420} height={320}>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={110}
+                  label={({ name, percent }) =>
+                    `${name} ${Math.round((percent || 0) * 100)}%`
+                  }
+                >
+                  {chartData.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => `${Number(value).toLocaleString()}원`}
+                />
+                <Legend />
+              </PieChart>
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h3>
+            {analysisPeriod === "year"
+              ? "월별 소비 추이"
+              : analysisPeriod === "month"
+              ? "일별 소비 추이"
+              : "일간 소비 추이"}
+          </h3>
+
+          {trendData.length === 0 ? (
+            <p>소비 추이 데이터를 표시할 수 없습니다.</p>
+          ) : (
+            <div className="chart-wrap">
+              <LineChart width={500} height={300} data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip
+                  formatter={(value) => `${Number(value).toLocaleString()}원`}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  name="소비액"
+                  stroke="#2563eb"
+                  strokeWidth={3}
+                />
+              </LineChart>
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h3>{getAnalysisLabel()} 리포트</h3>
+
+          {analysisExpenses.length === 0 ? (
+            <p>선택한 기간의 소비 데이터를 입력하면 리포트가 생성됩니다.</p>
+          ) : (
+            <div className="report-box">
+              <p>
+                <strong>기간 소비액:</strong>{" "}
+                {periodExpense.toLocaleString()}원
+              </p>
+              <p>
+                <strong>가장 많이 쓴 카테고리:</strong>{" "}
+                {topCategory ? `${topCategory[0]} (${topCategoryRate}%)` : "없음"}
+              </p>
+              <p>
+                <strong>예산 사용률:</strong> {budgetUsageRate}%
+              </p>
+              <p>
+                <strong>예상 저축 가능 금액:</strong>{" "}
+                {expectedSaving.toLocaleString()}원
+              </p>
+              <p>
+                <strong>추천 카드:</strong>{" "}
+                {recommendedCard ? recommendedCard.name : "소비 데이터 부족"}
+              </p>
+
+              <button className="secondary-btn" onClick={handleDownloadCSV}>
+                현재 분석 기간 CSV 다운로드
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
+    </>
   );
 
   const renderCoachPage = () => (
     <section className="card">
       <h3>스마트 소비 코치</h3>
+
+      <p>
+        현재 AI 코칭 기준: <strong>{getAnalysisLabel()}</strong>
+      </p>
 
       <button
         className="primary-btn"
@@ -1309,7 +1510,8 @@ function App() {
         </div>
       ) : (
         <div className="report-box" style={{ marginTop: 18 }}>
-          소비 데이터를 입력한 뒤 AI 코칭을 실행하면 맞춤형 절약 피드백이 표시됩니다.
+          소비 데이터를 입력한 뒤 AI 코칭을 실행하면 맞춤형 절약 피드백이
+          표시됩니다.
         </div>
       )}
     </section>
@@ -1319,7 +1521,11 @@ function App() {
     <section className="card">
       <h3>소비패턴 기반 카드 추천 TOP 3</h3>
 
-      {filteredExpenses.length <= 1 ? (
+      <p>
+        현재 카드 추천 기준: <strong>{getAnalysisLabel()}</strong>
+      </p>
+
+      {analysisExpenses.length <= 1 ? (
         <p>소비 데이터를 더 입력하면 카드 추천이 가능해요.</p>
       ) : top3CardRecommendations.length > 0 ? (
         <div className="grid grid-2">
@@ -1340,8 +1546,8 @@ function App() {
                 {index + 1}순위. {item.card.name}
               </h3>
               <p>
-                <strong>추천 기준:</strong> {item.categories.join(" + ")} 소비 비중{" "}
-                {item.rate}%
+                <strong>추천 기준:</strong> {item.categories.join(" + ")} 소비
+                비중 {item.rate}%
               </p>
               <p>
                 <strong>추천 유형:</strong> {item.card.type}
@@ -1366,7 +1572,8 @@ function App() {
       <section className="hero-card">
         <h2>{nickname || "사용자"}님, 소비 흐름을 확인해보세요</h2>
         <p>
-          영수증 OCR, 소비 입력, 분석, AI 코치, 카드 추천을 한 번에 관리할 수 있습니다.
+          영수증 OCR, 소비 입력, 분석, AI 코치, 카드 추천을 한 번에 관리할 수
+          있습니다.
         </p>
       </section>
 
@@ -1382,8 +1589,8 @@ function App() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-label">선택 월 예산 사용률</div>
-          <div className="stat-value">{budgetUsageRate}%</div>
+          <div className="stat-label">현재 분석 기간 소비</div>
+          <div className="stat-value">{periodExpense.toLocaleString()}원</div>
         </div>
 
         <div className="stat-card">
@@ -1402,7 +1609,8 @@ function App() {
           ) : (
             <div className="report-box">
               <p>
-                전체 소비액은 <strong>{totalExpense.toLocaleString()}원</strong>입니다.
+                전체 소비액은{" "}
+                <strong>{totalExpense.toLocaleString()}원</strong>입니다.
               </p>
               <p>
                 총 소비 기록은 <strong>{expenses.length}건</strong>입니다.
