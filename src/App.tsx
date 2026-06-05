@@ -153,9 +153,6 @@ function App() {
   const [editDate, setEditDate] = useState("");
 
   const [errorMessage, setErrorMessage] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(
-    new Date().toISOString().slice(0, 7)
-  );
 
   const [analysisPeriod, setAnalysisPeriod] =
     useState<AnalysisPeriod>("month");
@@ -185,9 +182,6 @@ function App() {
     b.date.localeCompare(a.date)
   );
 
-  const filteredExpenses = expenses.filter(
-    (item) => item.date.slice(0, 7) === selectedMonth
-  );
 
   const analysisExpenses = expenses
     .filter((item) => {
@@ -662,7 +656,6 @@ function App() {
     setAnalysisDate(date);
     setAnalysisMonth(date.slice(0, 7));
     setAnalysisYear(date.slice(0, 4));
-    setSelectedMonth(date.slice(0, 7));
 
     setActivePage("list");
     setCategory("");
@@ -716,7 +709,6 @@ function App() {
     setAnalysisDate(editDate);
     setAnalysisMonth(editDate.slice(0, 7));
     setAnalysisYear(editDate.slice(0, 4));
-    setSelectedMonth(editDate.slice(0, 7));
 
     setEditingId(null);
     setEditCategory("");
@@ -837,7 +829,6 @@ function App() {
     setAnalysisDate(ocrResult.date);
     setAnalysisMonth(ocrResult.date.slice(0, 7));
     setAnalysisYear(ocrResult.date.slice(0, 4));
-    setSelectedMonth(ocrResult.date.slice(0, 7));
 
     setActivePage("list");
     setCategory("");
