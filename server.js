@@ -165,10 +165,29 @@ app.post("/api/coach", async (req, res) => {
   } catch (error) {
     console.error("Gemini error:", error);
 
-    res.status(500).json({
-      message: "Gemini 생성 실패",
-      error: error.message,
-  });
+    const userName =
+      req.body.nickname && req.body.nickname.trim() !== ""
+        ? req.body.nickname.trim()
+        : "사용자";
+
+    res.json({
+      message: `${userName}님, 현재 AI 서버 응답이 지연되어 기본 소비 코칭을 제공합니다.
+
+📊 소비 분석
+- 현재 선택한 기간의 소비액은 ${Number(req.body.totalExpense || 0).toLocaleString()}원입니다.
+- 가장 많이 소비한 카테고리는 ${req.body.topCategory || "없음"}이며, 예산 사용률은 ${req.body.budgetUsageRate || 0}%입니다.
+
+💰 저축 목표 평가
+- 예상 저축 가능 금액은 ${Number(req.body.expectedSaving || 0).toLocaleString()}원입니다.
+- 현재 소비 흐름을 기준으로 저축 가능 금액을 확인하고, 예산 사용률이 높다면 남은 기간 소비를 줄이는 것이 좋습니다.
+
+✅ 절약 팁
+1. 가장 많이 소비한 카테고리의 지출 빈도를 먼저 줄여보세요.
+2. 남은 예산을 기준으로 하루 권장 소비액을 정해두면 과소비를 막기 쉽습니다.
+
+💳 카드 혜택 참고
+- 소비 비중이 높은 카테고리에 맞는 할인형 카드 혜택을 참고하면 좋습니다.`,
+   });
   }
 });
 
