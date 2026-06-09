@@ -138,7 +138,7 @@ app.post("/api/coach", async (req, res) => {
     `;
 
     const result = await gemini.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
 
@@ -162,11 +162,13 @@ app.post("/api/coach", async (req, res) => {
 
     res.status(500).json({
       message: "Gemini 생성 실패",
-    });
+      error: error.message,
+  });
   }
 });
 
 app.listen(4000, () => {
   console.log("Server running on http://localhost:4000");
   console.log("OCR + Gemini coach API ready");
+  console.log("Gemini key:", process.env.GEMINI_API_KEY ? "있음" : "없음");
 });
