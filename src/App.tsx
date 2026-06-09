@@ -1,5 +1,9 @@
 import "./App.css";
 
+const API_BASE = import.meta.env.DEV
+  ? "http://localhost:4000"
+  : "";
+
 import { useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
 import {
@@ -750,7 +754,7 @@ function App() {
       const formData = new FormData();
       formData.append("image", receiptFile);
 
-      const response = await fetch("http://localhost:4000/api/ocr", {
+      const response = await fetch(`${API_BASE}/api/ocr`, {
         method: "POST",
         body: formData,
       });
@@ -894,7 +898,7 @@ function App() {
     setErrorMessage("");
 
     try {
-      const response = await fetch("http://localhost:4000/api/coach", {
+      const response = await fetch(`${API_BASE}/api/coach`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

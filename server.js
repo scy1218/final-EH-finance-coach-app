@@ -1,3 +1,6 @@
+import path from "path";
+import { fileURLToPath } from "url";
+
 import { GoogleGenAI } from "@google/genai";
 import express from "express";
 import cors from "cors";
@@ -16,6 +19,8 @@ const gemini = new GoogleGenAI({
 
 app.use(cors());
 app.use(express.json());
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.post("/api/ocr", upload.single("image"), async (req, res) => {
   try {
@@ -167,8 +172,16 @@ app.post("/api/coach", async (req, res) => {
   }
 });
 
-app.listen(4000, () => {
-  console.log("Server running on http://localhost:4000");
+app.use(express.static(path.join(__dirname, "dist")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});
+
+const PORT = process.env.PORT || 4000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
   console.log("OCR + Gemini coach API ready");
   console.log("Gemini key:", process.env.GEMINI_API_KEY ? "있음" : "없음");
 });
