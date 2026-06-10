@@ -4,7 +4,7 @@ const API_BASE = import.meta.env.DEV
   ? "http://localhost:4000"
   : "";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import {
   PieChart,
@@ -51,7 +51,7 @@ type RecommendationItem = {
 type AnalysisPeriod = "day" | "month" | "year";
 
 const categories = ["식비", "쇼핑", "교통", "카페", "구독", "기타"];
-const MAX_AMOUNT = 10000000;
+const MAX_AMOUNT = 50000000;
 const CHART_COLORS = [
   "#2563eb",
   "#38bdf8",
@@ -144,6 +144,7 @@ function App() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
+  const ocrAbortControllerRef = useRef<AbortController | null>(null);
 
   const [aiCoachLoading, setAiCoachLoading] = useState(false);
   const [aiCoachMessage, setAiCoachMessage] = useState("");
@@ -395,6 +396,21 @@ function App() {
   useEffect(() => {
     localStorage.setItem("expenses", JSON.stringify(expenses));
   }, [expenses]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (expenses.length > 0 || income || budget || savingGoal || nickname) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [expenses, income, budget, savingGoal, nickname]);
 
   const isFutureDate = (value: string) => {
     if (!value) return false;
@@ -741,69 +757,85 @@ function App() {
   };
 
   const handleOCR = async () => {
-    if (!receiptFile) {
-      setErrorMessage("영수증 이미지를 먼저 업로드해주세요.");
+  if (!receiptFile) {
+    setErrorMessage("영수증 이미지를 먼저 업로드해주세요.");
+    return;
+  }
+
+  setOcrLoading(true);
+  setErrorMessage("");
+  setOcrResult(null);
+
+  const controller = new AbortController();
+  ocrAbortControllerRef.current = controller;
+
+  try {
+    const formData = new FormData();
+    formData.append("image", receiptFile);
+
+    const response = await fetch(`${API_BASE}/api/ocr`, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setErrorMessage(data.message || "OCR 분석에 실패했습니다. 재촬영하거나 직접 입력해주세요.");
       return;
     }
 
-    setOcrLoading(true);
-    setErrorMessage("");
-    setOcrResult(null);
+    const fields =
+      data.images?.[0]?.fields?.map(
+        (field: { inferText: string }) => field.inferText
+      ) || [];
 
-    try {
-      const formData = new FormData();
-      formData.append("image", receiptFile);
+    const fullText = fields.join(" ");
+    console.log("OCR TEXT:", fullText);
 
-      const response = await fetch(`${API_BASE}/api/ocr`, {
-        method: "POST",
-        body: formData,
-      });
+    const detectedAmount = extractAmountFromText(fullText);
+    const detectedDate = extractDateFromText(fullText);
+    const detectedCategory = classifyCategoryFromText(fullText);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setErrorMessage("OCR 분석에 실패했습니다. 재촬영하거나 직접 입력해주세요.");
-        return;
-      }
-
-      const fields =
-        data.images?.[0]?.fields?.map(
-          (field: { inferText: string }) => field.inferText
-        ) || [];
-
-      const fullText = fields.join(" ");
-      console.log("OCR TEXT:", fullText);
-
-      const detectedAmount = extractAmountFromText(fullText);
-      const detectedDate = extractDateFromText(fullText);
-      const detectedCategory = classifyCategoryFromText(fullText);
-
-      if (!detectedAmount) {
-        setAmount("");
-        setErrorMessage("금액을 인식하지 못했습니다. 직접 입력해주세요.");
-        return;
-      }
-
-      if (!detectedDate || isFutureDate(detectedDate)) {
-        setDate("");
-        setErrorMessage("영수증 날짜를 인식하지 못했습니다. 날짜를 직접 입력해주세요.");
-        return;
-      }
-
-      setAmount(detectedAmount);
-      setDate(detectedDate);
-      setCategory(detectedCategory);
-      setOcrResult({
-        date: detectedDate,
-        category: detectedCategory,
-        amount: detectedAmount,
-      });
-    } catch (error) {
-      console.error(error);
-      setErrorMessage("OCR 분석 중 오류가 발생했습니다.");
-    } finally {
-      setOcrLoading(false);
+    if (!detectedAmount) {
+      setAmount("");
+      setErrorMessage("금액을 인식하지 못했습니다. 직접 입력해주세요.");
+      return;
     }
+
+    if (!detectedDate || isFutureDate(detectedDate)) {
+      setDate("");
+      setErrorMessage("영수증 날짜를 인식하지 못했습니다. 날짜를 직접 입력해주세요.");
+      return;
+    }
+
+    setAmount(detectedAmount);
+    setDate(detectedDate);
+    setCategory(detectedCategory);
+    setOcrResult({
+      date: detectedDate,
+      category: detectedCategory,
+      amount: detectedAmount,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      setErrorMessage("OCR 분석이 취소되었습니다.");
+      return;
+    }
+
+    console.error(error);
+    setErrorMessage("OCR 분석 중 오류가 발생했습니다.");
+  } finally {
+    setOcrLoading(false);
+    ocrAbortControllerRef.current = null;
+  }
+};
+
+  const handleCancelOCR = () => {
+    ocrAbortControllerRef.current?.abort();
+    setOcrLoading(false);
+    setOcrResult(null);
   };
 
   const handleSaveOcrResult = () => {
@@ -1120,13 +1152,24 @@ function App() {
         <>
           <img className="ocr-preview" src={receiptImage} alt="영수증 미리보기" />
           <br />
-          <button
-            className="primary-btn"
-            onClick={handleOCR}
-            disabled={ocrLoading}
-          >
-            {ocrLoading ? "OCR 분석 중..." : "OCR 분석 실행"}
+          <div className="button-row">
+            <button
+              className="primary-btn"
+              onClick={handleOCR}
+              disabled={ocrLoading}
+            >
+              {ocrLoading ? "OCR 분석 중..." : "OCR 분석 실행"}
           </button>
+
+          {ocrLoading && (
+            <button
+              className="secondary-btn"
+              onClick={handleCancelOCR}
+            >
+              OCR 취소
+            </button>
+          )}
+          </div>
         </>
       )}
 

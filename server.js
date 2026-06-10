@@ -59,6 +59,14 @@ app.post("/api/ocr", upload.single("image"), async (req, res) => {
 
     const data = await response.json();
 
+    const fields = data.images?.[0]?.fields || [];
+
+    if (fields.length < 5) {
+      return res.status(400).json({
+        message: "올바른 영수증 이미지가 아닙니다.",
+      });
+    }
+
     if (!response.ok) {
       return res.status(response.status).json(data);
     }
